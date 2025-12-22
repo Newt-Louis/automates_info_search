@@ -1,11 +1,16 @@
+import os
 from fastapi import FastAPI
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    secret_key = os.getenv("SECRET_KEY")
+    return {"message": "Hello World", "secret_key": secret_key}
 
 
 @app.get("/hello/{name}")
