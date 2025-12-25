@@ -1,9 +1,12 @@
+import json
 import os
 from pydoc_data.topics import topics
 from typing import Annotated, Literal, TypedDict
 from langchain_tavily import TavilySearch
+from langchain_core.tools import tool
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from langgraph.graph.message import add_messages
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
@@ -21,29 +24,50 @@ llm = ChatGoogleGenerativeAI(
     max_retries=2,
 )
 
-tool = TavilySearch(max_results=3,topic="general")
-tools = [tool]
+tavily_client = TavilySearch(max_results=3,topic="general")
+
+@tool
+def web_search_tool(query:str):
+    """
+        Công cụ tìm kiếm thông tin trên internet.
+        Sử dụng công cụ này khi cần tìm thông tin thời gian thực, tin tức, hoặc sự kiện.
+        """
+    try:
+        result = tavily_client.invoke(query)
+        if isinstance(result, (list,dict)):
+            return json.dumps(result, ensure_ascii=False)
+
+        return str(result)
+    except Exception as e:
+        return f"Lỗi khi tìm kiếm: {str(e)}"
 
 # Gắn công cụ vào não của Gemini
+tools = [web_search_tool]
 llm_with_tools = llm.bind_tools(tools)
 
 
 class AgentState(TypedDict):
-    messages: list
+    messages: Annotated[list, add_messages]
 
 
 def agent_node(state: AgentState):
-    messages = state['messages']
-    response = llm_with_tools.invoke(messages)
-    return {"messages": [response]}
+    try:
+        messages = state['messages']
+        response = llm_with_tools.invoke(messages)
+        return {"messages": [response]}
+    except:
+        raise
 
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
-    messages = state['messages']
-    last_message = messages[-1]
-    if last_message.tool_calls:
-        return "tools"
-    return "__end__"
+    try:
+        messages = state['messages']
+        last_message = messages[-1]
+        if last_message.tool_calls:
+            return "tools"
+        return "__end__"
+    except:
+        raise
 
 
 workflow = StateGraph(AgentState)

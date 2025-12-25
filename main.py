@@ -16,7 +16,8 @@ class AgentRequest(BaseModel):
     """Request model for agent invocation."""
     prompt: str
 
-
+# Lỗi ở đây, hiện tại response với AgenResponse không khớp cấu trúc với nhau
+# Do giới hạn gửi request 1 ngày của GEMINI nên cần debug kĩ hơn
 # Response model
 class AgentResponse(BaseModel):
     """Response model for agent invocation."""
@@ -36,11 +37,12 @@ async def invoke_agent(request: AgentRequest):
         inputs = {"messages": [system_prompt,HumanMessage(content=request.prompt)]}
         # inputs = [("system",system_prompt),("human",HumanMessage(content=request.prompt))]
         print(inputs)
-        output_state = await agent_app.invoke(inputs)
-
-        result = output_state["message"][-1].content
+        output_state = agent_app.invoke(inputs)
+        print(output_state)
+        result = output_state["messages"][-1].content
 
         return AgentResponse(response=result)
 
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=f"Error invoking agent: {str(e)}")
