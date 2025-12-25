@@ -1,18 +1,46 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel
+from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
+from agent import app as agent_app, system_prompt
+from langchain_core.messages import HumanMessage
 
 load_dotenv()
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
+# Request model
+class AgentRequest(BaseModel):
+    """Request model for agent invocation."""
+    prompt: str
+
+
+# Response model
+class AgentResponse(BaseModel):
+    """Response model for agent invocation."""
+    response: str
 
 @app.get("/")
-async def root():
-    secret_key = os.getenv("SECRET_KEY")
-    return {"message": "Hello World", "secret_key": secret_key}
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
+@app.post("/agent")
+async def invoke_agent(request: AgentRequest):
+    try:
+        if not request.prompt.strip():
+            raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+
+        inputs = {"messages": [system_prompt,HumanMessage(content=request.prompt)]}
+        # inputs = [("system",system_prompt),("human",HumanMessage(content=request.prompt))]
+        print(inputs)
+        output_state = await agent_app.invoke(inputs)
+
+        result = output_state["message"][-1].content
+
+        return AgentResponse(response=result)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error invoking agent: {str(e)}")
