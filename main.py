@@ -36,11 +36,8 @@ async def invoke_agent(request: AgentRequest):
 
         inputs = {"messages": [system_prompt,HumanMessage(content=request.prompt)]}
         # inputs = [("system",system_prompt),("human",HumanMessage(content=request.prompt))]
-        print(inputs)
         output_state = agent_app.invoke(inputs)
-        print(output_state)
         result = output_state["messages"][-1].content
-
         return result
 
     except Exception as e:
