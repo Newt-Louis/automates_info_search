@@ -70,7 +70,7 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    responseDiv.textContent = data.response;
+                    responseDiv.textContent = data.response.text;
                 } else {
                     responseDiv.className = 'error';
                     responseDiv.textContent = 'Error: ' + (data.detail || 'Unknown error');

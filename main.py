@@ -41,7 +41,7 @@ async def invoke_agent(request: AgentRequest):
         print(output_state)
         result = output_state["messages"][-1].content
 
-        return AgentResponse(response=result)
+        return result
 
     except Exception as e:
         print(e)
